@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=UTF-8 />
+  <link rel="stylesheet" type="text/css" href="style.css" />
+</head>
+<body>
+  <script>console.clear();</script>
+  <script src="https://unpkg.com/three@0.87.1/build/three.js"></script>
+  <script src="https://unpkg.com/three@0.87.1/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://unpkg.com/three@0.87.1/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://unpkg.com/tween.js@16.6.0/src/Tween.js"></script>  <script
+  src="https://code.jquery.com/jquery-3.5.1.min.js"
+  integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="
+  crossorigin="anonymous"></script>
+  <script>
+
+  const backgroundColor = 0x000000;
+
+  /*////////////////////////////////////////*/
+
+  let gltf = null;
+  let mixer = null;
+  let clock = new THREE.Clock();
+  let controls;
+  let camera;
+  let down =  0;
+  let up = 0;
+  init();
+
+
+  function init() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+
+    scene = new THREE.Scene();
+
+
+
+    const ambient = (_ => {
+      const light = new THREE.AmbientLight("#555");
+      light.intensity=0.3;
+      scene.add(light);
+      return light;
+    })();
+
+    const spot = (_ => {
+      const light = new THREE.SpotLight("#fff");
+      light.position.set(-20, 20, 20);
+      light.shadow.mapSize.width = 1024;
+      light.shadow.mapSize.height = 1024;
+      light.angle = Math.PI / 8;
+      light.castShadow = true;
+      scene.add(light);
+      return light;
+    })();
+
+
+    const spot3 = (_ => {
+      const light = new THREE.SpotLight("rgb(255, 255, 204)");
+      light.position.set(-50, 5, 10);
+      light.shadow.mapSize.width = 1024;
+      light.shadow.mapSize.height = 1024;
+      light.angle = Math.PI / 8;
+      light.castShadow = true;
+      scene.add(light);
+      return light;
+    })();
+
+    const spot4 = (_ => {
+      const light = new THREE.SpotLight("rgb(153, 102, 255)");
+      light.position.set(0, 0, 45);
+      light.shadow.mapSize.width = 1024;
+      light.shadow.mapSize.height = 1024;
+      light.angle = Math.PI / 8;
+      light.castShadow = true;
+      scene.add(light);
+      return light;
+    })();
+
+
+
+    const positions = [
+      [0, 0, 25],
+      [50, 5, 10]
+
+    ];
+    let currPosition = 0;
+
+    camera = (_ => {
+      camera = new THREE.PerspectiveCamera( 60, width / height, 0.01, 10000 );
+      camera.position.set(...positions[currPosition]);
+      camera.lookAt(scene.position);
+      return camera;
+    })();
+
+    let geometry = new THREE.BoxGeometry(100, 5, 100);
+    let material = new THREE.MeshLambertMaterial({
+      color: "#707070"
+    });
+
+
+
+    //let ground = new THREE.Mesh(geometry, material);
+    //ground.position.y -= 15;
+    //ground.receiveShadow = true;
+    //scene.add(ground);
+
+    let manager = new THREE.LoadingManager();
+    manager.onProgress = function ( item, loaded, total ) {
+      console.log( item, loaded, total );
+    };
+
+    let loader = new THREE.GLTFLoader();
+    loader.setCrossOrigin( 'anonymous' ); // r84 以降は明示的に setCrossOrigin() を指定する必要がある
+
+    let scale = 10.0;
+    let url = "https://raw.githubusercontent.com/Caboteur/model/main/out.glb";
+
+
+
+
+
+
+    renderer = new THREE.WebGLRenderer();
+    //renderer.setClearColor( 0xbfe4ff );
+    renderer.setClearColor( "rgb(0, 0, 102)" );
+    renderer.setPixelRatio(devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = 2;
+
+
+    renderer.setSize( width, height );
+    renderer.gammaOutput = true;
+    document.body.appendChild( renderer.domElement );
+
+    loader.load(url, function (data) {
+      gltf = data;
+      let object = gltf.scene;
+      object.scale.set(scale, scale, scale);
+      object.position.y = -5;
+      object.position.x = 4;
+      object.castShadow = true;
+      object.receiveShadow = true;
+
+      scene.add(object);
+      render();
+      function getAnim(){
+        let animations = gltf.animations;
+        if ( animations && animations.length ) {
+          mixer = new THREE.AnimationMixer( object );
+          for ( let i = 0; i < animations.length; i ++ ) {
+            let animation = animations[ i ];
+
+            let anim = mixer.clipAction( animation )
+            anim.clampWhenFinished = true;
+            anim.loop = THREE.LoopOnce;
+            anim.timeScale = 1
+            anim.play().reset();
+          }
+        }
+      }
+
+      function getAnimReverse(){
+        let animations = gltf.animations;
+        if ( animations && animations.length ) {
+          mixer = new THREE.AnimationMixer( object );
+          for ( let i = 0; i < animations.length; i ++ ) {
+            let animation = animations[ i ];
+
+            let anim = mixer.clipAction( animation )
+            anim.clampWhenFinished = true;
+            anim.loop = THREE.LoopOnce;
+            anim.timeScale = -1
+            anim.play().reset();
+          }
+        }
+      }
+
+
+
+
+      function animate() {
+
+        requestAnimationFrame( animate );
+                if (mixer) mixer.update(clock.getDelta());
+                render();
+                        TWEEN.update();
+        camera.lookAt(scene.position);
+        renderer.render(scene, camera);
+      }
+
+      function moveDown(e) {
+
+            getAnim();
+       currPosition = 1 ;
+          animate();
+        tweenCamera(camera, positions[currPosition], 2100);
+
+      }
+
+      function moveUp(e) {
+        currPosition = 0 ;
+          animate();
+        tweenCamera(camera, positions[currPosition], 2100);
+      }
+
+
+
+      function tweenCamera(camera, position, duration) {
+        new TWEEN.Tween(camera.position).to({
+          x: position[0],
+          y: position[1],
+          z: position[2]
+        }, duration)
+        .easing(TWEEN.Easing.Linear.None)
+        .start();
+      }
+      animate();
+
+
+      var canvas = document.querySelector('canvas');
+      console.log(canvas)
+
+      $(window).on('wheel', function(event) {
+
+        if (event.originalEvent.deltaY >= 0) {
+           up=0;
+           down++;
+           console.log(down)
+           if(down === 2){
+             moveDown();
+           }
+        }
+        else {
+          down=0;
+          up++;
+          console.log(up)
+          if (up===2){
+                      moveUp();
+          }
+
+          console.log('Scroll up');
+        }
+      });
+
+
+    });
+
+  }
+
+
+  function render() {
+    renderer.render( scene, camera );
+  }
+
+
+</script>
+</body>
+</html>
